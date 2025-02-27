@@ -1,0 +1,89 @@
+How to Transfer Files Over TCP?
+✅ Client reads a file and sends it in chunks
+✅ Server receives the file and writes it to disk
+✅ Uses TCP sockets (send() and recv()) to handle the transfer
+
+1️⃣ Server Code (Run on Raspberry Pi)
+Save this as server.py on your Pi:
+
+python
+Copy
+Edit
+import socket
+
+# Server IP & Port
+HOST = "0.0.0.0"  # Listen on all interfaces
+PORT = 12345  
+
+# Create socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind((HOST, PORT))
+server_socket.listen(1)
+
+print("Waiting for connection...")
+client_socket, client_address = server_socket.accept()
+print(f"Connected to {client_address}")
+
+# Receive filename first
+filename = client_socket.recv(1024).decode()
+print(f"Receiving file: {filename}")
+
+# Open file to write received data
+with open(filename, "wb") as file:
+    while True:
+        data = client_socket.recv(1024)  # Receive in chunks
+        if not data:
+            break
+        file.write(data)  # Write to file
+
+print(f"File {filename} received successfully!")
+
+# Close sockets
+client_socket.close()
+server_socket.close()
+2️⃣ Client Code (Run on Windows)
+Save this as client.py on your Windows laptop:
+
+python
+Copy
+Edit
+import socket
+
+# Server IP (Replace with your Raspberry Pi's IP)
+SERVER_IP = "192.168.1.100"  # Change this to your Pi's IP
+PORT = 12345  
+
+# File to send
+filename = "test_file.txt"  # Change this to your actual file
+
+# Create socket
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.connect((SERVER_IP, PORT))
+
+# Send filename first
+client_socket.send(filename.encode())
+
+# Open file and send contents
+with open(filename, "rb") as file:
+    while chunk := file.read(1024):  # Read in 1024-byte chunks
+        client_socket.send(chunk)
+
+print(f"File {filename} sent successfully!")
+
+# Close socket
+client_socket.close()
+📌 How to Run the File Transfer?
+1️⃣ On Raspberry Pi (Server):
+
+bash
+Copy
+Edit
+python3 server.py
+2️⃣ On Windows (Client):
+
+bash
+Copy
+Edit
+python client.py
+3️⃣ The file will be sent from Windows and saved on Raspberry Pi! 🎉
+
