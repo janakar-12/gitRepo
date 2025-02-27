@@ -1,0 +1,270 @@
+How to Transfer Files Over TCP?
+✅ Client reads a file and sends it in chunks
+✅ Server receives the file and writes it to disk
+✅ Uses TCP sockets (send() and recv()) to handle the transfer
+
+1️⃣ Server Code (Run on Raspberry Pi)
+Save this as server.py on your Pi:
+
+python
+Copy
+Edit
+import socket
+
+# Server IP & Port
+HOST = "0.0.0.0"  # Listen on all interfaces
+PORT = 12345  
+
+# Create socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind((HOST, PORT))
+server_socket.listen(1)
+
+print("Waiting for connection...")
+client_socket, client_address = server_socket.accept()
+print(f"Connected to {client_address}")
+
+# Receive filename first
+filename = client_socket.recv(1024).decode()
+print(f"Receiving file: {filename}")
+
+# Open file to write received data
+with open(filename, "wb") as file:
+    while True:
+        data = client_socket.recv(1024)  # Receive in chunks
+        if not data:
+            break
+        file.write(data)  # Write to file
+
+print(f"File {filename} received successfully!")
+
+# Close sockets
+client_socket.close()
+server_socket.close()
+2️⃣ Client Code (Run on Windows)
+Save this as client.py on your Windows laptop:
+
+python
+Copy
+Edit
+import socket
+
+# Server IP (Replace with your Raspberry Pi's IP)
+SERVER_IP = "192.168.1.100"  # Change this to your Pi's IP
+PORT = 12345  
+
+# File to send
+filename = "test_file.txt"  # Change this to your actual file
+
+# Create socket
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.connect((SERVER_IP, PORT))
+
+# Send filename first
+client_socket.send(filename.encode())
+
+# Open file and send contents
+with open(filename, "rb") as file:
+    while chunk := file.read(1024):  # Read in 1024-byte chunks
+        client_socket.send(chunk)
+
+print(f"File {filename} sent successfully!")
+
+# Close socket
+client_socket.close()
+📌 How to Run the File Transfer?
+1️⃣ On Raspberry Pi (Server):
+
+bash
+Copy
+Edit
+python3 server.py
+2️⃣ On Windows (Client):
+
+bash
+Copy
+Edit
+python client.py
+3️⃣ The file will be sent from Windows and saved on Raspberry Pi! 🎉
+
+🔹 Next Steps?
+Do you want to send files in both directions (Pi → Windows)?
+Want to add progress bars for large file transfers?
+Need secure transfers with encryption (TLS/SSL)?
+Let me know, bro! 🚀🔥
+
+
+
+
+
+
+
+You said:
+This worked well Bro!!. Can we start multiple connections as per plan and then UDP and then our Phase 3
+ChatGPT said:
+Memory updated
+That's awesome, bro! 🔥🚀 Now, let’s move on to handling multiple client connections before diving into UDP.
+
+📌 Multiple Clients with Threads
+Right now, our server handles only one client at a time. To handle multiple clients simultaneously, we’ll use Python threads (threading module).
+
+1️⃣ Multi-Client Server (Runs on Raspberry Pi)
+Save this as server.py:
+
+python
+Copy
+Edit
+import socket
+import threading
+
+# Server IP & Port
+HOST = "0.0.0.0"
+PORT = 12345
+
+# Create server socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind((HOST, PORT))
+server_socket.listen(5)  # Allows up to 5 clients to wait in queue
+
+print("Server is listening for multiple clients...")
+
+# Function to handle each client
+def handle_client(client_socket, client_address):
+    print(f"New connection from {client_address}")
+    
+    # Receive and respond
+    data = client_socket.recv(1024).decode()
+    print(f"Received from {client_address}: {data}")
+    client_socket.send(f"Hello, Client {client_address}!".encode())
+
+    client_socket.close()
+
+# Accept multiple clients
+while True:
+    client_socket, client_address = server_socket.accept()
+    
+    # Create a new thread for each client
+    client_thread = threading.Thread(target=handle_client, args=(client_socket, client_address))
+    client_thread.start()
+2️⃣ Client Code (Runs on Windows, Multiple Instances)
+Save this as client.py:
+
+python
+Copy
+Edit
+import socket
+
+# Server IP & Port
+SERVER_IP = "192.168.1.100"  # Change to your Pi's IP
+PORT = 12345
+
+# Create socket
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.connect((SERVER_IP, PORT))
+
+# Send data
+client_socket.send("Hello from a client!".encode())
+
+# Receive response
+response = client_socket.recv(1024).decode()
+print(f"Received from server: {response}")
+
+client_socket.close()
+📌 How to Test Multiple Clients?
+1️⃣ Run the server first on Raspberry Pi
+
+bash
+Copy
+Edit
+python3 server.py
+2️⃣ Run multiple client instances on Windows (or different devices)
+
+Open multiple terminals and run client.py in each.
+Each client will get a response from the server.
+✅ Each client gets handled in a separate thread, so they can connect at the same time! 🎉
+
+🔹 Next Steps?
+Want to send files from multiple clients?
+Want to broadcast messages to all clients (like a mini chat server)?
+Or should we move to UDP communication next? 🚀🔥
+
+
+
+
+
+
+
+You said:
+On the server code, what is client_thread.start().
+ChatGPT said:
+Great question, bro! 🔥
+
+The line client_thread.start() is used to start a new thread for each connected client, allowing multiple clients to be handled simultaneously instead of one at a time.
+
+📌 What’s Happening?
+python
+Copy
+Edit
+client_thread = threading.Thread(target=handle_client, args=(client_socket, client_address))
+client_thread.start()
+🔹 threading.Thread() creates a new thread that runs the handle_client() function.
+🔹 target=handle_client → The function that will run in the new thread.
+🔹 args=(client_socket, client_address) → Arguments passed to the function.
+🔹 client_thread.start() → Starts the new thread, handling the client without blocking the server.
+
+📌 Why Do We Need start()?
+Without start(), the server would process only one client at a time. The start() method runs each client in parallel, so the server can handle multiple clients simultaneously.
+
+📌 What If We Used client_thread.run() Instead?
+If we used:
+
+python
+Copy
+Edit
+client_thread.run()
+The server would still handle one client at a time, because run() executes in the main thread instead of creating a new one.
+
+📌 Example: Handling 3 Clients Without Threads vs. With Threads
+❌ Without Threads (Blocking)
+python
+Copy
+Edit
+while True:
+    client_socket, client_address = server_socket.accept()
+    handle_client(client_socket, client_address)  # Blocks further connections
+🚫 Next client has to wait until the previous one is done.
+
+✅ With Threads (Non-Blocking)
+python
+Copy
+Edit
+while True:
+    client_socket, client_address = server_socket.accept()
+    client_thread = threading.Thread(target=handle_client, args=(client_socket, client_address))
+    client_thread.start()
+✅ Multiple clients can connect at the same time without waiting! 🎉
+
+📌 Key Takeaways
+client_thread.start() → Runs handle_client() in a new thread, allowing parallel processing.
+Multiple clients can connect at the same time without waiting.
+Without threads, each client would have to wait for the previous one to finish.
+🔹 Next Steps?
+Now that you understand multi-threading, should we:
+1️⃣ Transfer files from multiple clients?
+2️⃣ Move to UDP communication?
+
+Let me know, bro! 🚀🔥
+
+
+
+
+
+
+
+You said:
+That worked bro!!, let me try transferring files
+ChatGPT said:
+Memory updated
+Awesome, bro! 🔥💯 Go ahead and test file transfers from multiple clients. If you run into any issues or need improvements (like handling simultaneous file writes or progress tracking), just hit me up! 🚀
+
+Once you're done, we’ll move to UDP communication as planned. Looking forward to your update! 🤜🤛
